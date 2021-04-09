@@ -3,37 +3,12 @@ const express = require('express')
 
 const projects = require('./projects-model.js')
 
+const {
+  validateProjectId,
+  validateProject
+} = require('./projects-middleware.js')
+
 const router = express.Router()
-
-function validiateProjectId(req, res, next){
-  projects.get(req.params.id)
-    .then( project => {
-      if(project){
-        req.project = project
-        next()
-      } else {
-        res.status(404).json({message: `Could not find project with id ${req.params.id}`})
-      }
-    })
-    .catch( error => {
-      res.status(500).json({message: 'Server error', error})
-    })
-}
-
-function validateProject(req, res, next){
-  const { name, description, completed } = req.body
-  if(name && description){
-    // completed is optional and defaults to false if not provided
-    if(completed){
-      req.newProject = { name, description, completed: completed === true ? 1 : 0 }
-    } else {
-      req.newProject = { name, description, completed: 0 }
-    }
-    next()
-  } else {
-    res.status(400).json({message: 'Project name and description are required'})
-  }
-}
 
 router.get('/', (_, res) => {
   projects.get()
@@ -41,12 +16,22 @@ router.get('/', (_, res) => {
       res.status(200).json(projects)
     })
     .catch( error => {
-      res.status(500).json({message: 'Server error', error})
+      res.status(500).json({message: 'Server error', error: error.toString()})
     })
 })
 
-router.get('/:id', validiateProjectId, (req, res) => {
+router.get('/:id', validateProjectId, (req, res) => {
   res.status(200).json(req.project)
+})
+
+router.get('/:id/actions', validateProjectId, (req, res) => {
+  projects.getProjectActions(req.params.id)
+    .then( actions => {
+      res.status(200).json(actions)
+    })
+    .catch( error => {
+      res.status(500).json({message: 'Server error', error: error.toString()})
+    })
 })
 
 router.post('/', validateProject, (req, res) => {
@@ -55,21 +40,21 @@ router.post('/', validateProject, (req, res) => {
       res.status(201).json(project)
     })
     .catch( error => {
-      console.log({message: 'Server error', error})
+      console.log({message: 'Server error', error: error.toString()})
     })
 })
 
-router.put('/:id', validateProject, validiateProjectId, (req, res) => {
+router.put('/:id', validateProject, validateProjectId, (req, res) => {
   projects.update(req.params.id, req.newProject)
     .then( updated => {
       res.status(200).json(updated)
     })
     .catch( error => {
-      res.status(500).json({message: 'Server error', error})
+      res.status(500).json({message: 'Server error', error: error.toString()})
     })
 })
 
-router.delete('/:id', validiateProjectId, (req, res) => {
+router.delete('/:id', validateProjectId, (req, res) => {
   projects.remove(req.params.id)
     .then( () => {
       res.status(204).json() // unfortunatly the readme says not to return :(
@@ -78,7 +63,7 @@ router.delete('/:id', validiateProjectId, (req, res) => {
       // if I did return it would be res.stauts(200).json(req.project)
     })
     .catch( error => {
-      res.status(500).json({message: 'Server error', error})
+      res.status(500).json({message: 'Server error', error: error.toString()})
     })
 })
 
